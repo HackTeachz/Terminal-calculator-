@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hacker Terminal Calculator v1.4</title>
+
+<style>
+html,body{
+  margin:0;
+  height:100%;
+  background:#000;
+  color:#00ff66;
+  font-family:Courier New, monospace;
+}
+
+/* TERMINAL */
+
+#terminal{
+  padding:12px;
+  height:100%;
+  overflow-y:auto;
+  white-space:pre-wrap;
+}
+
+#input-line{
+  display:flex;
+}
+
+.prompt{margin-right:6px;}
+
+input{
+  flex:1;
+  background:transparent;
+  border:none;
+  outline:none;
+  color:inherit;
+  font-family:inherit;
+  font-size:1em;
+}
+
+/* GRAPHIC MODE */
+
+#graphicMode{
+  position:fixed;
+  inset:0;
+  background:#000;
+  display:none;
+  justify-content:center;
+  align-items:center;
+}
+
+#calculator{
+  width:100%;
+  max-width:420px;
+  height:100%;
+  max-height:700px;
+  display:flex;
+  flex-direction:column;
+  border:2px solid #00ff66;
+  box-shadow:0 0 20px #00ff66;
+}
+
+#display{
+  height:90px;
+  padding:20px;
+  font-size:2em;
+  text-align:right;
+  border-bottom:2px solid #00ff66;
+  overflow-x:auto;
+}
+
+#buttons{
+  flex:1;
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  padding:10px;
+}
+
+button{
+  background:#000;
+  border:2px solid #00ff66;
+  color:#00ff66;
+  font-size:1.3em;
+  border-radius:6px;
+}
+
+button:active{
+  background:#002200;
+}
+
+#exitBtn{
+  border:2px solid red;
+  color:red;
+}
+
+#backBtn{
+  border:2px solid orange;
+  color:orange;
+}
+</style>
+</head>
+
+<body>
+
+<div id="terminal"></div>
+
+<div id="graphicMode">
+  <div id="calculator">
+    <div id="display">0</div>
+    <div id="buttons">
+      <button>7</button>
+      <button>8</button>
+      <button>9</button>
+      <button>/</button>
+
+      <button>4</button>
+      <button>5</button>
+      <button>6</button>
+      <button>*</button>
+
+      <button>1</button>
+      <button>2</button>
+      <button>3</button>
+      <button>-</button>
+
+      <button>0</button>
+      <button>.</button>
+      <button>=</button>
+      <button>+</button>
+
+      <button>C</button>
+      <button id="backBtn">⌫</button>
+      <button id="exitBtn">EXIT</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const terminal = document.getElementById("terminal");
+const graphicMode = document.getElementById("graphicMode");
+const display = document.getElementById("display");
+const buttons = document.querySelectorAll("#buttons button");
+
+let history = [];
+let lastResult = null;
+let stealth = false;
+
+const VERSION = "v1.4";
+const functions = {};
+
+/* PRINT */
+
+async function typePrint(text, cls="output") {
+  const div = document.createElement("div");
+  div.className = cls;
+  terminal.appendChild(div);
+  for (const c of text) {
+    div.textContent += c;
+    terminal.scrollTop = terminal.scrollHeight;
+    await new Promise(r=>setTimeout(r,3));
+  }
+}
+
+/* CLEAR */
+
+function clearCalculationsOnly(){
+  [...terminal.querySelectorAll(".output,.input-echo")]
+    .forEach(n=>n.remove());
+  history=[];
+  lastResult=null;
+}
+
+/* MATH */
+
+function evalMath(expr){
+  expr=expr.replace(/\^/g,"**");
+  if(!/^[0-9+\-*/%.() ]+$/.test(expr)) throw 1;
+  return Function(`return (${expr})`)();
+}
+
+/* BANNER */
+
+async function banner(){
+  await typePrint("=== HACKER TERMINAL CALCULATOR ===","banner");
+  await typePrint("Enter any math expression and press Enter","banner");
+  await typePrint("Supported: + - * / % ^ ( )","banner");
+  await typePrint("Commands are case sensitive.","banner");
+  await typePrint("Type /help for commands.","banner");
+  await typePrint("");
+}
+
+/* ADD FUNCTION */
+
+function addFunction(name){
+  if(functions[name]){
+    typePrint(`Function '${name}' already exists.`);
+    return;
+  }
+  functions[name]=true;
+  typePrint(`Function '${name}' added.`);
+}
+
+/* RUN FUNCTION */
+
+async function runFunction(cmd,arg){
+  switch(cmd){
+
+    case "clear": clearCalculationsOnly(); return;
+
+    case "history":
+      history.length
+        ? history.forEach((v,i)=>typePrint(`${i+1}: ${v}`))
+        : typePrint("No history.");
+      break;
+
+    case "last": typePrint(lastResult ?? "No last result."); break;
+    case "time": typePrint(new Date().toTimeString().slice(0,8)); break;
+    case "date": typePrint(new Date().toISOString().slice(0,10)); break;
+    case "hex": typePrint("0x"+Number(arg).toString(16)); break;
+    case "bin": typePrint("0b"+Number(arg).toString(2)); break;
+    case "dec": typePrint(String(Number(arg))); break;
+    case "abs": typePrint(String(Math.abs(arg))); break;
+    case "sqrt": typePrint(String(Math.sqrt(arg))); break;
+    case "rand": typePrint(String(Math.random())); break;
+    case "version": typePrint(VERSION); break;
+
+    case "about":
+      typePrint("Hacker-style terminal calculator made by Hack Teachz");
+      break;
+
+    case "breach":
+      for(const l of [
+        "[*] accessing kernel...",
+        "[*] injecting payload...",
+        ">>> ACCESS GRANTED <<<"
+      ]) await typePrint(l);
+      break;
+
+    case "stealth":
+      stealth=!stealth;
+      typePrint(stealth?"Stealth enabled.":"Stealth disabled.");
+      break;
+
+    case "graphic":
+      graphicMode.style.display="flex";
+      return;
+  }
+}
+
+/* INPUT */
+
+function inputLine(){
+  const line=document.createElement("div");
+  line.id="input-line";
+
+  const p=document.createElement("span");
+  p.className="prompt";
+  p.textContent=stealth?"":"$";
+
+  const i=document.createElement("input");
+  i.autocomplete="off";
+
+  line.appendChild(p);
+  line.appendChild(i);
+  terminal.appendChild(line);
+  i.focus();
+
+  i.onkeydown=async e=>{
+    if(e.key==="Enter"){
+      terminal.removeChild(line);
+      const v=i.value.trim();
+      const [cmd,arg]=v.split(" ");
+
+      if(cmd!=="clear" && !stealth){
+        await typePrint("> "+v,"input-echo");
+      }
+
+      if(v==="/help"){
+        [
+          "add function:: clear","add function:: history","add function:: last",
+          "add function:: time","add function:: date","add function:: hex",
+          "add function:: bin","add function:: dec","add function:: abs",
+          "add function:: sqrt","add function:: rand","add function:: version",
+          "add function:: about","add function:: breach","add function:: stealth",
+          "add function:: graphic"
+        ].forEach(c=>typePrint(c));
+      }
+      else if(v.startsWith("add function::")){
+        addFunction(v.split("::")[1]?.trim());
+      }
+      else if(functions[cmd]){
+        await runFunction(cmd,arg);
+      }
+      else{
+        try{
+          const r=evalMath(v);
+          lastResult=r;
+          history.push(r);
+          typePrint(`= ${r} (hex:${r.toString(16)}, bin:${r.toString(2)})`);
+        }catch{
+          typePrint("Calculation error.");
+        }
+      }
+
+      inputLine();
+    }
+  };
+}
+
+/* GRAPHIC LOGIC */
+
+let currentInput="";
+
+buttons.forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const val=btn.textContent;
+
+    if(val==="C"){
+      currentInput="";
+      display.textContent="0";
+    }
+    else if(val==="⌫"){
+      currentInput=currentInput.slice(0,-1);
+      display.textContent=currentInput || "0";
+    }
+    else if(val==="="){
+      try{
+        const r=evalMath(currentInput);
+        display.textContent=r;
+        lastResult=r;
+        history.push(r);
+        currentInput=String(r);
+      }catch{
+        display.textContent="Error";
+        currentInput="";
+      }
+    }
+    else if(val==="EXIT"){
+      graphicMode.style.display="none";
+    }
+    else{
+      currentInput+=val;
+      display.textContent=currentInput;
+    }
+  });
+});
+
+/* START */
+
+banner().then(inputLine);
+</script>
+</body>
+</html>
